@@ -1,0 +1,223 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observatory
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: observatory
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: ["alertmanager:9093"]
+
+    rule_files:
+      - /etc/prometheus/rules/*.yml
+
+    scrape_configs:
+      # Scrape Prometheus itself
+      - job_name: prometheus
+        static_configs:
+          - targets: ["localhost:9090"]
+
+      # Auto-discover pods with prometheus.io/scrape annotation
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [observatory]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+
+      # Scrape node exporter
+      - job_name: node-exporter
+        static_configs:
+          - targets: ["node-exporter:9100"]
+
+  # --- Alerting rules ---
+  app_alerts.yml: |
+    groups:
+      - name: app.availability
+        interval: 30s
+        rules:
+          - alert: HighErrorRate
+            expr: |
+              sum(rate(http_requests_total{status=~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total[5m])) > 0.05
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High HTTP error rate"
+              description: "Error rate is {{ humanizePercentage $value }} over the last 5 minutes (threshold: 5%)."
+              runbook: "https://github.com/yourusername/go-sre-observatory/blob/main/docs/runbooks/high-error-rate.md"
+
+          - alert: AppDown
+            expr: up{job="kubernetes-pods"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "App instance is down"
+              description: "Pod {{ $labels.pod }} has been unreachable for more than 1 minute."
+
+      - name: app.latency
+        rules:
+          - alert: HighP99Latency
+            expr: |
+              histogram_quantile(0.99,
+                sum(rate(http_request_duration_seconds_bucket[5m])) by (le, path)
+              ) > 1.0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "P99 latency above 1s on {{ $labels.path }}"
+              description: "99th percentile latency on {{ $labels.path }} is {{ humanizeDuration $value }} (threshold: 1s)."
+
+          - alert: HighP50Latency
+            expr: |
+              histogram_quantile(0.50,
+                sum(rate(http_request_duration_seconds_bucket[5m])) by (le, path)
+              ) > 0.2
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Median latency above 200ms on {{ $labels.path }}"
+              description: "Median latency on {{ $labels.path }} is {{ humanizeDuration $value }}."
+
+      - name: app.saturation
+        rules:
+          - alert: HighInFlightRequests
+            expr: http_requests_in_flight > 50
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High number of in-flight requests"
+              description: "{{ $value }} requests currently in-flight."
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: observatory
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      serviceAccountName: prometheus
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.51.0
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--storage.tsdb.retention.time=15d"
+            - "--web.enable-lifecycle"
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: rules
+              mountPath: /etc/prometheus/rules
+            - name: data
+              mountPath: /prometheus
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+            items:
+              - key: prometheus.yml
+                path: prometheus.yml
+        - name: rules
+          configMap:
+            name: prometheus-config
+            items:
+              - key: app_alerts.yml
+                path: app_alerts.yml
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: observatory
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090
+  type: ClusterIP
+---
+# RBAC — lets Prometheus discover pods in the namespace
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: observatory
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
+  - apiGroups: [""]
+    resources: [nodes, pods, services, endpoints]
+    verbs: [get, list, watch]
+  - nonResourceURLs: [/metrics]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: observatory
