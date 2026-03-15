@@ -165,6 +165,26 @@ func inventoryHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func usersHandler(w http.ResponseWriter, r *http.Request) {
+    latency := time.Duration(10+rand.Intn(60)) * time.Millisecond
+    time.Sleep(latency)
+
+    if rand.Float64() < 0.01 {
+        appErrorsTotal.WithLabelValues("/users", "user_not_found").Inc()
+        logJSON("error", "/users", "user not found", map[string]any{"latency_ms": latency.Milliseconds()})
+        jsonResponse(w, http.StatusNotFound, map[string]string{"error": "user not found"})
+        return
+    }
+
+    logJSON("info", "/users", "request served", map[string]any{"latency_ms": latency.Milliseconds()})
+    jsonResponse(w, http.StatusOK, map[string]any{
+        "users": []map[string]string{
+            {"id": "usr-001", "name": "sharan", "role": "admin"},
+            {"id": "usr-002", "name": "alice",  "role": "viewer"},
+        },
+    })
+}
+
 func slowHandler(w http.ResponseWriter, r *http.Request) {
 	// Intentionally slow endpoint to demonstrate latency SLO breaches
 	latency := time.Duration(800+rand.Intn(1200)) * time.Millisecond
@@ -191,6 +211,7 @@ func main() {
 	mux.HandleFunc("/inventory",  instrument("/inventory",  inventoryHandler))
 	mux.HandleFunc("/slow",       instrument("/slow",       slowHandler))
 	mux.Handle("/metrics",        promhttp.Handler())
+	mux.HandleFunc("/users", instrument("/users", usersHandler))
 
 	port := os.Getenv("PORT")
 	if port == "" {
