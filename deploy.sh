@@ -46,6 +46,19 @@ step "Creating namespace"
 kubectl apply -f k8s/monitoring/prometheus.yaml | grep -E "^(namespace|serviceaccount|clusterrole)" || true
 ok "Namespace $NAMESPACE ready"
 
+# --- Slack webhook ---
+if [ -z "$SLACK_WEBHOOK_URL" ]; then
+  warn "SLACK_WEBHOOK_URL not set — Slack alerts will not work"
+  warn "Run: export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/..."
+else
+  step "Patching Slack webhook secret"
+  kubectl create secret generic alertmanager-secret \
+    --from-literal=SLACK_WEBHOOK_URL="$SLACK_WEBHOOK_URL" \
+    --namespace "$NAMESPACE" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  ok "Slack secret updated"
+fi
+
 # --- Deploy in order ---
 step "Deploying Prometheus + RBAC"
 kubectl apply -f k8s/monitoring/prometheus.yaml

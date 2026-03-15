@@ -41,7 +41,7 @@ data:
       - name: slack-default
         slack_configs:
           - api_url_file: /etc/alertmanager/slack_url
-            channel: "#alerts"
+            channel: "#all-alerts"
             send_resolved: true
             title: '{{ template "slack.title" . }}'
             text: '{{ template "slack.text" . }}'
@@ -50,7 +50,7 @@ data:
       - name: slack-critical
         slack_configs:
           - api_url_file: /etc/alertmanager/slack_url
-            channel: "#alerts"
+            channel: "#all-alerts"
             send_resolved: true
             title: '{{ template "slack.title" . }}'
             text: '{{ template "slack.text" . }}'
@@ -59,7 +59,7 @@ data:
       - name: slack-warning
         slack_configs:
           - api_url_file: /etc/alertmanager/slack_url
-            channel: "#alerts"
+            channel: "#all-alerts"
             send_resolved: true
             title: '{{ template "slack.title" . }}'
             text: '{{ template "slack.text" . }}'
