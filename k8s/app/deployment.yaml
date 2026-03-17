@@ -23,8 +23,8 @@ spec:
     spec:
       containers:
         - name: app
-          image: observatory-app:latest
-          imagePullPolicy: Never          # uses local minikube image cache
+          image: ghcr.io/sharanch/go-sre-observatory:latest
+          imagePullPolicy: Always          # using ghcr image
           ports:
             - name: http
               containerPort: 8080

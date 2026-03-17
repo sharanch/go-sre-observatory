@@ -2,9 +2,13 @@ name: Build and Push Go App
 
 on:
   push:
-    branches: [ "main" ]
+    paths:
+      - 'app/**'      # Trigger only if files in /app are changed
+      - '.github/workflows/**' # Also trigger if you change the workflow itself
   pull_request:
     branches: [ "main" ]
+    paths:
+      - 'app/**'
 
 permissions:
   contents: read
@@ -40,7 +44,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
