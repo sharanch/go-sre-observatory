@@ -1,0 +1,73 @@
+name: CI/CD to GHCR
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "app/**"
+      - ".github/workflows/build-app.yaml"
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - "app/**"
+
+# Crucial for GHCR: The workflow needs permission to write to the package registry
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # 1. Test Job: Fast feedback loop to catch code errors before building Docker
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true # Automatically caches Go modules
+
+      - name: Verify Dependencies
+        run: go mod download && go mod verify
+
+      - name: Run Tests
+        run: go test -v ./...
+
+  # 2. Build Job: Containerize and Push
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' # Only push on merges to main
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }} #provisioned by github as i'm using ghcr
+
+      - name: Extract Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=sha,format=short
+            type=raw,value=latest
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Caching specifically for GitHub Actions
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
