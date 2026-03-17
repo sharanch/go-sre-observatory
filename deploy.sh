@@ -32,14 +32,6 @@ ok "minikube running"
 eval "$(minikube docker-env)"
 ok "Docker env pointed at minikube"
 
-# --- Build images ---
-step "Building observatory-app"
-docker build -t observatory-app:latest ./app
-ok "observatory-app built"
-
-step "Building loadgen"
-docker build -t loadgen:latest ./k8s/loadgen
-ok "loadgen built"
 
 # --- Namespace ---
 step "Creating namespace"
