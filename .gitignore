@@ -1,5 +1,4 @@
 # Go
-app/go.sum
 app/server
 
 # Kubernetes secrets (never commit real webhook URLs)
