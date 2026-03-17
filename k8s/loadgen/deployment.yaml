@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: loadgen
-          image: loadgen:latest
-          imagePullPolicy: Never
+          image: ghcr.io/sharanch/loadgen:latest
+          imagePullPolicy: Always
           env:
             - name: TARGET_URL
               value: "http://observatory-app"
