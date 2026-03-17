@@ -1,25 +1,22 @@
-name: CI/CD to GHCR
+name: Build and Push Go App
 
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - "app/**"
-      - ".github/workflows/build-app.yaml"
   pull_request:
     branches: [ "main" ]
-    paths:
-      - "app/**"
 
-# Crucial for GHCR: The workflow needs permission to write to the package registry
 permissions:
   contents: read
   packages: write
 
 jobs:
-  # 1. Test Job: Fast feedback loop to catch code errors before building Docker
   test:
     runs-on: ubuntu-latest
+    # This sets the base directory for all 'run' commands in this job
+    defaults:
+      run:
+        working-directory: ./app 
     steps:
       - uses: actions/checkout@v4
 
@@ -27,7 +24,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
-          cache: true # Automatically caches Go modules
+          # Tells the cache exactly where to find the sum file
+          cache-dependency-path: ./app/go.sum 
 
       - name: Verify Dependencies
         run: go mod download && go mod verify
@@ -35,11 +33,10 @@ jobs:
       - name: Run Tests
         run: go test -v ./...
 
-  # 2. Build Job: Containerize and Push
   build-and-push:
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' # Only push on merges to main
+    if: github.event_name != 'pull_request'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -49,7 +46,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }} #provisioned by github as i'm using ghcr
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Metadata
         id: meta
@@ -57,17 +54,18 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=ref,event=branch
             type=sha,format=short
             type=raw,value=latest
 
       - name: Build and Push
         uses: docker/build-push-action@v5
         with:
-          context: .
+          # IMPORTANT: Point context to the 'app' folder where Dockerfile lives
+          context: ./app
+          # Point to the Dockerfile specifically since it's inside 'app'
+          file: ./app/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Caching specifically for GitHub Actions
           cache-from: type=gha
           cache-to: type=gha,mode=max
