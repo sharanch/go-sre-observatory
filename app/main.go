@@ -103,6 +103,14 @@ func logJSON(level, path, msg string, fields map[string]any) {
 
 // --- Handlers ---
 
+func sharanHandler(w http.ResponseWriter, r *http.Request){
+	logJSON("info", "/sharan", "request served", map[string]any{})
+    jsonResponse(w, http.StatusOK, map[string]any{
+        "name": "sharan",
+        "role": "SRE",
+    })
+}
+
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, http.StatusOK, map[string]string{
 		"status": "ok",
@@ -212,6 +220,7 @@ func main() {
 	mux.HandleFunc("/slow",       instrument("/slow",       slowHandler))
 	mux.Handle("/metrics",        promhttp.Handler())
 	mux.HandleFunc("/users", instrument("/users", usersHandler))
+	mux.HandleFunc("/sharan", instrument("sharan", sharanHandler))
 
 	port := os.Getenv("PORT")
 	if port == "" {
