@@ -1,10 +1,10 @@
-name: Build and Push Go App
+name: Build and Push Go Webserver App
 
 on:
   push:
     paths:
       - 'app/**'      # Trigger only if files in /app are changed
-      - '.github/workflows/**' # Also trigger if you change the workflow itself
+      - '.github/workflows/build-app.yaml' # Also trigger if you change the workflow itself
   pull_request:
     branches: [ "main" ]
     paths:
