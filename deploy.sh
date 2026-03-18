@@ -90,22 +90,26 @@ step "Setting up port-forwards (background)"
 pkill -f "kubectl port-forward.*$NAMESPACE" 2>/dev/null || true
 sleep 1
 
-kubectl port-forward svc/grafana      -n "$NAMESPACE" 3000:3000 &>/dev/null &
-kubectl port-forward svc/prometheus   -n "$NAMESPACE" 9090:9090 &>/dev/null &
-kubectl port-forward svc/alertmanager -n "$NAMESPACE" 9093:9093 &>/dev/null &
-kubectl port-forward svc/observatory-app -n "$NAMESPACE" 8080:80 &>/dev/null &
+minikube addons enable ingress
+
+kubectl wait --namespace ingress-nginx \
+  --for=condition=ready pod \
+  --selector=app.kubernetes.io/component=controller \
+  --timeout=90s
+
+kubectl apply -f k8s/ingress.yaml
 
 sleep 2
-ok "Port-forwards active"
+ok "Ingress active"
 
 echo -e "\n${GREEN}========================================${NC}"
 echo -e "${GREEN}  go-sre-observatory deployed!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
-echo "  Grafana       →  http://localhost:3000  (admin / observatory)"
-echo "  Prometheus    →  http://localhost:9090"
-echo "  Alertmanager  →  http://localhost:9093"
-echo "  App           →  http://localhost:8080"
+echo "  https://observatory.local/grafana  (admin / observatory)"
+echo "  http://observatory.local/prometheus "
+echo "  http://observatory.local/alertmanager - alertmanager"
+echo "  http://observatory.local → app "
 echo ""
 echo "  Dashboards auto-provisioned under: Observatory > App Overview"
 echo ""
