@@ -6,6 +6,25 @@ A production-grade observability platform running on Kubernetes — built to dem
 
 ---
 
+```
+Code change → git push
+    ↓
+GitHub Actions: test → build → push to GHCR
+    ↓
+./deploy.sh locally:
+    - injects SLACK_WEBHOOK_URL from env
+    - applies all manifests
+    - pulls latest image (Always policy)
+    - port-forwards everything
+    ↓
+Full stack running:
+    - Go app serving traffic
+    - Prometheus scraping metrics
+    - Grafana showing dashboard + logs
+    - Loki receiving logs via Promtail
+    - Alertmanager routing to Slack
+```
+
 ## Screenshots
 
 ### Grafana — live dashboard with traffic spikes
