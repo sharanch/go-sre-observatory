@@ -42,6 +42,7 @@ ok "Namespace $NAMESPACE ready"
 if [ -z "$SLACK_WEBHOOK_URL" ]; then
   warn "SLACK_WEBHOOK_URL not set — Slack alerts will not work"
   warn "Run: export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/..."
+  warn "Slack alerts: edit k8s/monitoring/alertmanager.yaml and set your webhook URL"
 else
   step "Patching Slack webhook secret"
   kubectl create secret generic alertmanager-secret \
@@ -49,6 +50,7 @@ else
     --namespace "$NAMESPACE" \
     --dry-run=client -o yaml | kubectl apply -f -
   ok "Slack secret updated"
+  kubectl rollout restart deployment/alertmanager -n "$NAMESPACE" 2>/dev/null || true
 fi
 
 # --- Deploy in order ---
@@ -107,5 +109,4 @@ echo "  App           →  http://localhost:8080"
 echo ""
 echo "  Dashboards auto-provisioned under: Observatory > App Overview"
 echo ""
-warn "Slack alerts: edit k8s/monitoring/alertmanager.yaml and set your webhook URL"
 echo ""
