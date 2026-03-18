@@ -1,6 +1,6 @@
 # go-sre-observatory
 
-A production-grade observability platform running on Kubernetes — built to demonstrate SRE engineering practices through a fully instrumented Go microservice. Covers the three pillars of observability: metrics, logs, and alerting. A built-in load generator keeps dashboards live at all times.
+A production-grade observability platform running on Kubernetes - built to demonstrate SRE engineering practices through a fully instrumented Go microservice. Covers the three pillars of observability: metrics, logs, and alerting. A built-in load generator keeps dashboards live at all times.
 
 > Built as part of a DevOps/SRE portfolio transition from 4 years of cloud operations (Oracle Cloud, Ctrls Datacentres). This project bridges hands-on infrastructure experience with platform engineering.
 
