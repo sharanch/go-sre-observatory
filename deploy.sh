@@ -50,7 +50,6 @@ else
     --namespace "$NAMESPACE" \
     --dry-run=client -o yaml | kubectl apply -f -
   ok "Slack secret updated"
-  kubectl rollout restart deployment/alertmanager -n "$NAMESPACE" 2>/dev/null || true
 fi
 
 # --- Deploy in order ---
@@ -83,12 +82,9 @@ for deploy in prometheus grafana alertmanager loki observatory-app loadgen; do
   ok "$deploy ready"
 done
 
-# --- Port-forwards ---
-step "Setting up port-forwards (background)"
 
-# Kill any existing port-forwards
-pkill -f "kubectl port-forward.*$NAMESPACE" 2>/dev/null || true
-sleep 1
+
+# Enable ingress controller and object
 
 minikube addons enable ingress
 
@@ -106,10 +102,10 @@ echo -e "\n${GREEN}========================================${NC}"
 echo -e "${GREEN}  go-sre-observatory deployed!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
-echo "  https://observatory.local/grafana  (admin / observatory)"
-echo "  http://observatory.local/prometheus "
-echo "  http://observatory.local/alertmanager - alertmanager"
-echo "  http://observatory.local → app "
+echo "  https://observatory.local/grafana  (admin / observatory) "
+echo "  http://observatory.local/prometheus - Prometheus "
+echo "  http://observatory.local/alertmanager - Alertmanager"
+echo "  http://observatory.local → app doesn't have frontend"
 echo ""
 echo "  Dashboards auto-provisioned under: Observatory > App Overview"
 echo ""
