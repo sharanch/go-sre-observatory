@@ -1,14 +1,4 @@
 apiVersion: v1
-kind: Secret
-metadata:
-  name: alertmanager-secret
-  namespace: observatory
-type: Opaque
-stringData:
-  # Replace with your actual Slack webhook URL before deploying
-  SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: alertmanager-config
