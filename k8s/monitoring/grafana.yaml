@@ -46,68 +46,74 @@ data:
       "uid": "app-overview",
       "schemaVersion": 38,
       "refresh": "10s",
-      "time": {"from": "now-1h", "to": "now"},
+      "time": {"from": "now-15m", "to": "now"},
       "panels": [
         {
           "id": 1, "type": "stat", "title": "Request Rate (RPS)",
           "gridPos": {"x":0,"y":0,"w":6,"h":4},
-          "targets": [{"expr":"sum(rate(http_requests_total[1m]))","legendFormat":"rps","datasource":{"uid":"prometheus"}}],
+          "targets": [{"expr":"sum(rate(http_requests_total[1m]))","legendFormat":"rps","datasource":{"type":"prometheus","uid":"prometheus"}}],
           "options": {"reduceOptions":{"calcs":["lastNotNull"]},"colorMode":"background"},
           "fieldConfig": {"defaults":{"color":{"mode":"thresholds"},"thresholds":{"steps":[{"color":"green","value":null},{"color":"yellow","value":50},{"color":"red","value":100}]},"unit":"reqps"}}
         },
         {
           "id": 2, "type": "stat", "title": "Error Rate",
           "gridPos": {"x":6,"y":0,"w":6,"h":4},
-          "targets": [{"expr":"sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))","legendFormat":"error rate","datasource":{"uid":"prometheus"}}],
+          "targets": [{"expr":"sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))","legendFormat":"error rate","datasource":{"type":"prometheus","uid":"prometheus"}}],
           "options": {"reduceOptions":{"calcs":["lastNotNull"]},"colorMode":"background"},
           "fieldConfig": {"defaults":{"color":{"mode":"thresholds"},"thresholds":{"steps":[{"color":"green","value":null},{"color":"yellow","value":0.01},{"color":"red","value":0.05}]},"unit":"percentunit"}}
         },
         {
           "id": 3, "type": "stat", "title": "P99 Latency",
           "gridPos": {"x":12,"y":0,"w":6,"h":4},
-          "targets": [{"expr":"histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))","legendFormat":"p99","datasource":{"uid":"prometheus"}}],
+          "targets": [{"expr":"histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))","legendFormat":"p99","datasource":{"type":"prometheus","uid":"prometheus"}}],
           "options": {"reduceOptions":{"calcs":["lastNotNull"]},"colorMode":"background"},
           "fieldConfig": {"defaults":{"color":{"mode":"thresholds"},"thresholds":{"steps":[{"color":"green","value":null},{"color":"yellow","value":0.5},{"color":"red","value":1.0}]},"unit":"s"}}
         },
         {
           "id": 4, "type": "stat", "title": "In-Flight Requests",
           "gridPos": {"x":18,"y":0,"w":6,"h":4},
-          "targets": [{"expr":"http_requests_in_flight","legendFormat":"in-flight","datasource":{"uid":"prometheus"}}],
+          "targets": [{"expr":"http_requests_in_flight","legendFormat":"in-flight","datasource":{"type":"prometheus","uid":"prometheus"}}],
           "options": {"reduceOptions":{"calcs":["lastNotNull"]},"colorMode":"background"},
           "fieldConfig": {"defaults":{"color":{"mode":"thresholds"},"thresholds":{"steps":[{"color":"green","value":null},{"color":"yellow","value":20},{"color":"red","value":50}]}}}
         },
         {
           "id": 5, "type": "timeseries", "title": "Request Rate by Endpoint",
           "gridPos": {"x":0,"y":4,"w":12,"h":8},
-          "targets": [{"expr":"sum(rate(http_requests_total[1m])) by (path)","legendFormat":"{{path}}","datasource":{"uid":"prometheus"}}],
+          "targets": [{"expr":"sum(rate(http_requests_total[1m])) by (path)","legendFormat":"{{path}}","datasource":{"type":"prometheus","uid":"prometheus"}}],
           "fieldConfig": {"defaults":{"unit":"reqps"}}
         },
         {
           "id": 6, "type": "timeseries", "title": "Latency Percentiles (p50 / p95 / p99)",
           "gridPos": {"x":12,"y":4,"w":12,"h":8},
           "targets": [
-            {"expr":"histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))","legendFormat":"p50","datasource":{"uid":"prometheus"}},
-            {"expr":"histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))","legendFormat":"p95","datasource":{"uid":"prometheus"}},
-            {"expr":"histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))","legendFormat":"p99","datasource":{"uid":"prometheus"}}
+            {"expr":"histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))","legendFormat":"p50","datasource":{"type":"prometheus","uid":"prometheus"}},
+            {"expr":"histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))","legendFormat":"p95","datasource":{"type":"prometheus","uid":"prometheus"}},
+            {"expr":"histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))","legendFormat":"p99","datasource":{"type":"prometheus","uid":"prometheus"}}
           ],
           "fieldConfig": {"defaults":{"unit":"s"}}
         },
         {
           "id": 7, "type": "timeseries", "title": "HTTP Status Codes",
           "gridPos": {"x":0,"y":12,"w":12,"h":8},
-          "targets": [{"expr":"sum(rate(http_requests_total[1m])) by (status)","legendFormat":"HTTP {{status}}","datasource":{"uid":"prometheus"}}],
+          "targets": [{"expr":"sum(rate(http_requests_total[1m])) by (status)","legendFormat":"HTTP {{status}}","datasource":{"type":"prometheus","uid":"prometheus"}}],
           "fieldConfig": {"defaults":{"unit":"reqps"}}
         },
         {
           "id": 8, "type": "timeseries", "title": "Error Rate by Endpoint",
           "gridPos": {"x":12,"y":12,"w":12,"h":8},
-          "targets": [{"expr":"sum(rate(http_requests_total{status=~\"5..\"}[5m])) by (path) / sum(rate(http_requests_total[5m])) by (path)","legendFormat":"{{path}}","datasource":{"uid":"prometheus"}}],
+          "targets": [{"expr":"sum(rate(http_requests_total{status=~\"5..\"}[5m])) by (path) / sum(rate(http_requests_total[5m])) by (path)","legendFormat":"{{path}}","datasource":{"type":"prometheus","uid":"prometheus"}}],
           "fieldConfig": {"defaults":{"unit":"percentunit"}}
         },
         {
           "id": 9, "type": "logs", "title": "Application Logs",
           "gridPos": {"x":0,"y":20,"w":24,"h":8},
-          "targets": [{"expr":"{app=\"observatory-app\"}","datasource":{"uid":"loki"}}]
+          "targets": [
+            {
+              "expr": "{app=\"observatory-app\"}",
+              "queryType": "range",
+              "datasource": {"type": "loki", "uid": "loki"}
+            }
+          ]
         }
       ]
     }
