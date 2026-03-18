@@ -29,7 +29,7 @@ if ! minikube status | grep -q "Running"; then
 fi
 ok "minikube running"
 
-eval "$(minikube docker-env)"
+eval "$(minikube docker-env --shell bash)"
 ok "Docker env pointed at minikube"
 
 
