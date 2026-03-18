@@ -159,6 +159,10 @@ spec:
               value: "false"
             - name: GF_FEATURE_TOGGLES_ENABLE
               value: "ngalert"
+            - name: GF_SERVER_ROOT_URL
+              value: "http://observatory.local/grafana"
+            - name: GF_SERVER_SERVE_FROM_SUB_PATH
+              value: "true"
           volumeMounts:
             - name: datasources
               mountPath: /etc/grafana/provisioning/datasources
