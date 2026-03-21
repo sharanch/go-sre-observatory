@@ -98,7 +98,7 @@ data:
             annotations:
               summary: "P99 latency above 1s on {{ $labels.path }}"
               description: "99th percentile latency on {{ $labels.path }} is {{ humanizeDuration $value }} (threshold: 1s)."
-              runbook: "https://github.com/sharanch/go-sre-observatory/blob/main/docs/runbooks/high-error-rate.md"
+              runbook: "https://github.com/sharanch/go-sre-observatory/blob/main/docs/runbooks/high-latency.md"
 
           - alert: HighP50Latency
             expr: |
