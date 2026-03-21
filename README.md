@@ -15,7 +15,7 @@ GitHub Actions: test → build → push to GHCR
     - injects SLACK_WEBHOOK_URL from env
     - applies all manifests
     - pulls latest image (Always policy)
-    - port-forwards everything
+    - sets up ingress for all services
     ↓
 Full stack running:
     - Go app serving traffic
@@ -30,6 +30,10 @@ Full stack running:
 ### Grafana — live dashboard with traffic spikes
 ![Grafana dashboard showing request rate, error rate, p99 latency and traffic spikes](docs/screenshots/grafana-dashboard.png)
 16 req/s baseline with periodic 40 RPS spikes every 2 minutes. P99 latency shown in red — driven by the intentionally slow `/slow` endpoint breaching the 1s SLO threshold.
+
+### Grafana — application logs via Loki
+![Grafana dashboard showing application logs panel](docs/screenshots/grafana-logs.png)
+Structured JSON logs shipped via Promtail → Loki, queryable alongside metrics. App label extracted from pod filesystem path via regex pipeline stage.
 
 ### Prometheus — auto-discovered scrape targets
 ![Prometheus targets page showing all pods UP](docs/screenshots/prometheus-targets.png)
@@ -56,6 +60,8 @@ End-to-end alert delivery: Prometheus evaluates rules → Alertmanager routes �
 | Realistic traffic simulation | Load generator produces 10 RPS baseline + 40 RPS spikes every 2 minutes |
 | Runbook-driven operations | Every alert rule includes a runbook with diagnosis steps |
 | Infrastructure as code | Entire stack deployable with a single command, torn down with another |
+| CI pipeline | GitHub Actions builds and pushes images to GHCR on every push |
+| Ingress routing | All services accessible via a single host via nginx ingress |
 
 ---
 
@@ -87,9 +93,12 @@ End-to-end alert delivery: Prometheus evaluates rules → Alertmanager routes �
 │  │ host metrics │           Slack #all-alerts             │
 │  └──────────────┘                ▲                        │
 │                                  │ webhook                │
-└──────────────────────────────────┼────────────────────────┘
-                                   │
-                            Alertmanager
+│  ┌──────────────┐                │                        │
+│  │ nginx ingress│ ───────────────┘                        │
+│  │ observatory  │                                         │
+│  │ .local       │                                         │
+│  └──────────────┘                                         │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -105,6 +114,7 @@ End-to-end alert delivery: Prometheus evaluates rules → Alertmanager routes �
 | Loki | 3.0 | Log aggregation and storage |
 | Promtail | 3.0 | Log shipping DaemonSet |
 | Node Exporter | 1.8 | Host CPU, memory, disk metrics |
+| nginx ingress | latest | Single host routing for all services |
 | Kubernetes | 1.28+ | Orchestration via minikube |
 
 ---
@@ -121,25 +131,33 @@ End-to-end alert delivery: Prometheus evaluates rules → Alertmanager routes �
 ### Deploy
 
 ```bash
-git clone https://github.com/yourusername/go-sre-observatory
+git clone https://github.com/sharanch/go-sre-observatory
 cd go-sre-observatory
 
-# optional — set your Slack webhook so alerts route automatically
+# set your Slack webhook so alerts route automatically
 export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK"
 
 ./deploy.sh
 ```
 
-The script handles everything: starts minikube, builds both Docker images inside the cluster daemon, applies all manifests in dependency order, waits for rollouts, and opens port-forwards.
+The script handles everything: starts minikube, enables ingress addon, applies all manifests in dependency order, injects the Slack webhook secret, waits for rollouts, and sets up port-forwards for Prometheus and Alertmanager.
+
+Images are built and pushed to GHCR automatically via GitHub Actions on every push — `deploy.sh` pulls them directly, no local build needed.
+
+### Add the host entry
+
+```bash
+echo "$(minikube ip) observatory.local" | sudo tee -a /etc/hosts
+```
 
 ### Access the UIs
 
 | Service | URL | Credentials |
 |---|---|---|
-| Grafana | http://localhost:3000 | admin / observatory |
+| Grafana | http://observatory.local/grafana | admin / observatory |
+| App | http://observatory.local | — |
 | Prometheus | http://localhost:9090 | — |
 | Alertmanager | http://localhost:9093 | — |
-| App | http://localhost:8080 | — |
 
 The Grafana dashboard auto-provisions under **Dashboards → Observatory → App Overview**.
 
@@ -209,6 +227,8 @@ Likely causes: upstream dependency down, bad deployment rollout, pod OOMKill.
 kubectl describe pods -l app=observatory-app -n observatory
 ```
 
+Full runbook: [docs/runbooks/high-error-rate.md](docs/runbooks/high-error-rate.md)
+
 ---
 
 ### `HighP99Latency`
@@ -266,12 +286,18 @@ go-sre-observatory/
 │   │   └── node-exporter.yaml
 │   ├── logging/
 │   │   └── loki-promtail.yaml
-│   └── loadgen/
-│       ├── main.go        # Weighted traffic generator with spike logic
-│       ├── Dockerfile
-│       └── deployment.yaml
+│   ├── loadgen/
+│   │   ├── main.go        # Weighted traffic generator with spike logic
+│   │   ├── Dockerfile
+│   │   └── deployment.yaml
+│   └── ingress.yaml       # nginx ingress routing all services via observatory.local
 ├── docs/
+│   ├── runbooks/
+│   │   └── high-error-rate.md
 │   └── screenshots/
+├── .github/workflows/
+│   ├── build-app.yaml     # test → build → push app image to GHCR
+│   └── build-loadgen.yaml # build → push loadgen image to GHCR
 ├── deploy.sh              # One-command deploy to minikube
 ├── teardown.sh
 └── README.md
@@ -287,6 +313,10 @@ go-sre-observatory/
 
 **Why Loki over ELK?** Loki uses the same label model as Prometheus. The same labels that identify a pod in a Prometheus query (`namespace`, `pod`, `app`) find its logs in Loki — no separate index infrastructure or schema to maintain. Resource footprint is also significantly lighter.
 
+**Why static file discovery for Promtail instead of Kubernetes SD?** Promtail 3.0 has a known issue on minikube where Kubernetes SD auto-injects a stale node name filter, silently discovering zero pods. Static file discovery via `/var/log/pods/observatory_*/*/*.log` is more reliable for single-node local setups. The `app` label is extracted from the file path using a regex pipeline stage.
+
 **Why a custom load generator over k6 or Locust?** Running a Go generator inside the cluster avoids external network overhead and keeps the entire demo self-contained. It also adds a second Go service to the repo, demonstrating the language beyond a single file. For production load testing, k6 would be the right tool.
 
 **Why two app replicas?** The Prometheus targets screenshot shows both replicas scraping independently — demonstrating Kubernetes-native service discovery working as designed, not just a single-pod proof of concept.
+
+**Why ingress over port-forwards?** Port-forwards are fragile — they die when the terminal closes or the connection drops. nginx ingress runs inside the cluster as a stable reverse proxy, routing all services via a single host (`observatory.local`) without any local process to keep alive.
