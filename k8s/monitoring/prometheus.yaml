@@ -74,7 +74,7 @@ data:
             annotations:
               summary: "High HTTP error rate"
               description: "Error rate is {{ humanizePercentage $value }} over the last 5 minutes (threshold: 5%)."
-              runbook: "https://github.com/yourusername/go-sre-observatory/blob/main/docs/runbooks/high-error-rate.md"
+              runbook: "https://github.com/sharanch/go-sre-observatory/blob/main/docs/runbooks/high-error-rate.md"
 
           - alert: AppDown
             expr: up{job="kubernetes-pods"} == 0
