@@ -111,6 +111,7 @@ data:
             annotations:
               summary: "Median latency above 200ms on {{ $labels.path }}"
               description: "Median latency on {{ $labels.path }} is {{ humanizeDuration $value }}."
+              runbook: "https://github.com/sharanch/go-sre-observatory/blob/main/docs/runbooks/high-latency.md"
 
       - name: app.saturation
         rules:
@@ -122,6 +123,8 @@ data:
             annotations:
               summary: "High number of in-flight requests"
               description: "{{ $value }} requests currently in-flight."
+              runbook: "https://github.com/sharanch/go-sre-observatory/blob/main/docs/runbooks/high-inflight.md"
+
 ---
 apiVersion: apps/v1
 kind: Deployment
