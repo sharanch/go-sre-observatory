@@ -103,12 +103,12 @@ func logJSON(level, path, msg string, fields map[string]any) {
 
 // --- Handlers ---
 
-func sharanHandler(w http.ResponseWriter, r *http.Request){
+func sharanHandler(w http.ResponseWriter, r *http.Request) {
 	logJSON("info", "/sharan", "request served", map[string]any{})
-    jsonResponse(w, http.StatusOK, map[string]any{
-        "name": "sharan",
-        "role": "SRE",
-    })
+	jsonResponse(w, http.StatusOK, map[string]any{
+		"name": "sharan",
+		"role": "SRE",
+	})
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -174,23 +174,23 @@ func inventoryHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func usersHandler(w http.ResponseWriter, r *http.Request) {
-    latency := time.Duration(10+rand.Intn(60)) * time.Millisecond
-    time.Sleep(latency)
+	latency := time.Duration(10+rand.Intn(60)) * time.Millisecond
+	time.Sleep(latency)
 
-    if rand.Float64() < 0.01 {
-        appErrorsTotal.WithLabelValues("/users", "user_not_found").Inc()
-        logJSON("error", "/users", "user not found", map[string]any{"latency_ms": latency.Milliseconds()})
-        jsonResponse(w, http.StatusNotFound, map[string]string{"error": "user not found"})
-        return
-    }
+	if rand.Float64() < 0.01 {
+		appErrorsTotal.WithLabelValues("/users", "user_not_found").Inc()
+		logJSON("error", "/users", "user not found", map[string]any{"latency_ms": latency.Milliseconds()})
+		jsonResponse(w, http.StatusNotFound, map[string]string{"error": "user not found"})
+		return
+	}
 
-    logJSON("info", "/users", "request served", map[string]any{"latency_ms": latency.Milliseconds()})
-    jsonResponse(w, http.StatusOK, map[string]any{
-        "users": []map[string]string{
-            {"id": "usr-001", "name": "sharan", "role": "admin"},
-            {"id": "usr-002", "name": "alice",  "role": "viewer"},
-        },
-    })
+	logJSON("info", "/users", "request served", map[string]any{"latency_ms": latency.Milliseconds()})
+	jsonResponse(w, http.StatusOK, map[string]any{
+		"users": []map[string]string{
+			{"id": "usr-001", "name": "sharan", "role": "admin"},
+			{"id": "usr-002", "name": "alice", "role": "viewer"},
+		},
+	})
 }
 
 func slowHandler(w http.ResponseWriter, r *http.Request) {
@@ -213,14 +213,14 @@ func main() {
 	appVersion.WithLabelValues(version, "go1.22").Set(1)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz",    instrument("/healthz",    healthHandler))
-	mux.HandleFunc("/orders",     instrument("/orders",     ordersHandler))
-	mux.HandleFunc("/payments",   instrument("/payments",   paymentsHandler))
-	mux.HandleFunc("/inventory",  instrument("/inventory",  inventoryHandler))
-	mux.HandleFunc("/slow",       instrument("/slow",       slowHandler))
-	mux.Handle("/metrics",        promhttp.Handler())
+	mux.HandleFunc("/healthz", instrument("/healthz", healthHandler))
+	mux.HandleFunc("/orders", instrument("/orders", ordersHandler))
+	mux.HandleFunc("/payments", instrument("/payments", paymentsHandler))
+	mux.HandleFunc("/inventory", instrument("/inventory", inventoryHandler))
+	mux.HandleFunc("/slow", instrument("/slow", slowHandler))
+	mux.Handle("/metrics", promhttp.Handler())
 	mux.HandleFunc("/users", instrument("/users", usersHandler))
-	mux.HandleFunc("/sharan", instrument("sharan", sharanHandler))
+	mux.HandleFunc("/sharan", instrument("/sharan", sharanHandler))
 
 	port := os.Getenv("PORT")
 	if port == "" {
